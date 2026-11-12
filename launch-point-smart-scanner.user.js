@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Launch Point Smart Scanner
 // @namespace    rescons
-// @version      1.1.9
+// @version      1.1.10
 // @description  Scanner-first entry for the Launch Point Google Form.
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform?*
@@ -184,7 +184,7 @@
     scan.value = '';
     if (!value) return;
     safely(async () => {
-      const inputs = /^\d{15}$/.test(value) ? fields.students : /^\d{4}$/.test(value) ? fields.equipment : null;
+      const inputs = /^\d{11}$/.test(value) ? fields.students : /^\d{4}$/.test(value) ? fields.equipment : null;
       if (!inputs) throw new Error('Invalid barcode');
       if (values(inputs).includes(value)) throw new Error('That barcode is already entered.');
       const empty = inputs.find(input => !input.value.trim());
@@ -203,7 +203,7 @@
     if (scan.value.trim()) throw new Error('Press Enter to finish the current scan before submitting.');
     const students = values(fields.students), equipment = values(fields.equipment);
     if (!students.length) throw new Error('Scan at least one student ID.');
-    if (students.some(value => !/^\d{15}$/.test(value))) throw new Error('Every student ID must have exactly 15 digits.');
+    if (students.some(value => !/^\d{11}$/.test(value))) throw new Error('Every student ID must have exactly 11 digits.');
     if (equipment.some(value => !/^\d{4}$/.test(value))) throw new Error('Every equipment barcode must have exactly 4 digits.');
     if (new Set(students).size !== students.length || new Set(equipment).size !== equipment.length) throw new Error('Remove duplicate barcodes before submitting.');
     if (!actions.includes(selected(fields.action))) throw new Error('Choose an action first (A or D).');

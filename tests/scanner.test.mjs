@@ -80,9 +80,9 @@ test('URL restrictions include account-specific paths and exclude other forms', 
 test('scan validation, duplicate prevention, limits and Enter protection', async () => {
   const ctx = await setup();
   await scanCode(ctx, 'bad'); assert.match(await ctx.status.innerText(), /Invalid barcode/);
-  for (let i = 1; i <= 4; i++) await scanCode(ctx, String(i).padStart(15, '0'));
-  await scanCode(ctx, '000000000000001'); assert.match(await ctx.status.innerText(), /already entered/);
-  await scanCode(ctx, '000000000000005'); assert.match(await ctx.status.innerText(), /four student/);
+  for (let i = 1; i <= 4; i++) await scanCode(ctx, String(i).padStart(11, '0'));
+  await scanCode(ctx, '00000000001'); assert.match(await ctx.status.innerText(), /already entered/);
+  await scanCode(ctx, '00000000005'); assert.match(await ctx.status.innerText(), /four student/);
   for (const code of ['1082', '1083', '1084', '9999']) await scanCode(ctx, code);
   await scanCode(ctx, '9998'); assert.match(await ctx.status.innerText(), /four equipment/);
   assert.equal(await checked(ctx, 'Console'), stations[1]);
@@ -93,21 +93,21 @@ test('scan validation, duplicate prevention, limits and Enter protection', async
 test('unselected station defaults to PC with or without unknown equipment', async () => {
   for (const equipment of ['', '9999']) {
     const ctx = await setup();
-    await scanCode(ctx, '000000000000001'); await ctx.scan.press('a');
+    await scanCode(ctx, '00000000001'); await ctx.scan.press('a');
     if (equipment) await scanCode(ctx, equipment);
     await submitAndWait(ctx); assert.equal(await checked(ctx, 'PC'), 'PC Station');
     await ctx.page.keyboard.press('s'); assert.equal(await submissions(ctx), 1);
-    assert.equal(await studentInput(ctx).inputValue(), '000000000000001'); await ctx.page.close();
+    assert.equal(await studentInput(ctx).inputValue(), '00000000001'); await ctx.page.close();
   }
 });
 
 test('explicit stations are retained and mapped equipment conflicts block submission', async () => {
   const ctx = await setup();
-  await scanCode(ctx, '000000000000001'); await ctx.scan.press('d');
+  await scanCode(ctx, '00000000001'); await ctx.scan.press('d');
   await ctx.page.locator('[data-value="Console Station 3"]').click();
   await submitAndWait(ctx); assert.equal(await checked(ctx, 'Console'), stations[2]); await ctx.page.close();
   const conflict = await setup();
-  await scanCode(conflict, '000000000000001'); await conflict.scan.press('a');
+  await scanCode(conflict, '00000000001'); await conflict.scan.press('a');
   await scanCode(conflict, '1083'); await scanCode(conflict, '1088');
   await conflict.scan.press('s'); assert.match(await conflict.status.innerText(), /conflicting stations/);
   assert.equal(await submissions(conflict), 0);
@@ -118,7 +118,7 @@ test('explicit stations are retained and mapped equipment conflicts block submis
 test('shortcuts do not interrupt text editing; incomplete scans block submission', async () => {
   const ctx = await setup();
   await ctx.scan.press('s'); assert.match(await ctx.status.innerText(), /at least one/);
-  await scanCode(ctx, '000000000000001'); await ctx.scan.press('s'); assert.match(await ctx.status.innerText(), /Choose an action/);
+  await scanCode(ctx, '00000000001'); await ctx.scan.press('s'); assert.match(await ctx.status.innerText(), /Choose an action/);
   await ctx.scan.press('a'); await ctx.scan.fill('123'); await ctx.scan.press('d'); assert.equal(await ctx.scan.inputValue(), '123d');
   await ctx.page.locator('[jsname="M2UYVd"]').focus();
   await ctx.page.keyboard.press('s'); assert.match(await ctx.status.innerText(), /finish the current scan/);
@@ -128,7 +128,7 @@ test('shortcuts do not interrupt text editing; incomplete scans block submission
 
 test('confirmation follows Googles account-specific another-response link and remounts scanner', async () => {
   const ctx = await setup();
-  await scanCode(ctx, '000000000000001'); await ctx.scan.press('a'); await submitAndWait(ctx);
+  await scanCode(ctx, '00000000001'); await ctx.scan.press('a'); await submitAndWait(ctx);
   const confirmationURL = `https://docs.google.com/forms/d/e/${ids[0]}/formResponse`;
   const nextURL = `https://docs.google.com/forms/u/0/d/e/${ids[0]}/viewform?usp=form_confirm`;
   await ctx.page.route(confirmationURL, route => route.fulfill({ contentType: 'text/html', body: `<div class="vHW8K">Your response has been recorded.</div><a href="${nextURL}">Submit another response</a>` }));
@@ -148,7 +148,7 @@ test('delayed Google selections complete before queued submit', async () => {
       for (const el of radio.parentElement.children) el.setAttribute('aria-checked', String(el === radio));
     }, 200);
   }, true));
-  await scanCode(ctx, '000000000000001'); await ctx.scan.press('a'); await scanCode(ctx, '1083');
+  await scanCode(ctx, '00000000001'); await ctx.scan.press('a'); await scanCode(ctx, '1083');
   await submitAndWait(ctx); assert.equal(await checked(ctx, 'Console'), stations[1]); await ctx.page.close();
 });
 
@@ -157,7 +157,7 @@ test('scans scroll the filled field into view and preserve scanner focus', async
   await ctx.page.evaluate(() => {
     for (const item of document.querySelectorAll('form [role="listitem"]')) item.style.minHeight = '600px';
   });
-  for (const [code, index] of [['000000000000001', 0], ['1083', 4]]) {
+  for (const [code, index] of [['00000000001', 0], ['1083', 4]]) {
     await scanCode(ctx, code);
     const field = ctx.page.locator('form input[type="text"]').nth(index);
     await ctx.page.waitForFunction(index => {
@@ -209,7 +209,7 @@ test('repeated errors do not rewrite status, and a valid scan clears the error',
   });
   await scanCode(ctx, 'bad');
   assert.equal(await ctx.page.evaluate(() => window.statusChanges), 0);
-  await scanCode(ctx, '000000000000001');
+  await scanCode(ctx, '00000000001');
   assert.equal(await ctx.status.isVisible(), false);
   assert.equal(await ctx.status.textContent(), '');
   await ctx.scan.press('a');
@@ -220,7 +220,7 @@ test('repeated errors do not rewrite status, and a valid scan clears the error',
   await ctx.panel.locator('#retry').waitFor({ state: 'visible' });
   await ctx.panel.locator('#retry').click();
   assert.equal(await ctx.scan.isDisabled(), false);
-  assert.equal(await studentInput(ctx).inputValue(), '000000000000001');
+  assert.equal(await studentInput(ctx).inputValue(), '00000000001');
   await ctx.page.close();
 });
 
@@ -257,7 +257,7 @@ test('original Submit button and native form submit bypass scanner checks', asyn
 
 test('A checks in, D checks out without submitting, and S submits', async () => {
   const ctx = await setup();
-  await scanCode(ctx, '000000000000001');
+  await scanCode(ctx, '00000000001');
   await ctx.scan.press('a');
   assert.equal(await checked(ctx, 'Check'), actions[0]);
   await ctx.scan.press('d');

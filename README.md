@@ -6,7 +6,7 @@ The small corner interface contains **Launch Point Scanner**, a **Scan** textbox
 
 | Input | Result |
 | --- | --- |
-| 15 digits + Enter | Next student ID, maximum four |
+| 11 digits + Enter | Next student ID, maximum four |
 | 4 digits + Enter | Next equipment barcode, maximum four |
 | A | Check in and borrow equipment |
 | D | Check out and return equipment |
