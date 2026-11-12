@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Launch Point Smart Scanner
-// @namespace    launch-point-staff
-// @version      1.1.5
-// @description  Scanner-first entry for the two authorized Launch Point Google Forms.
+// @namespace    rescons
+// @version      1.1.9
+// @description  Scanner-first entry for the Launch Point Google Form.
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform?*
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/formResponse*
@@ -21,7 +21,7 @@
 (() => {
   'use strict';
 
-  // Runtime verification also rejects suffixes accepted by the metadata wildcards.
+  // Only run on these two forms. Check the URL here too since @match allows extra text.
   const ids = [
     '1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q',
     '1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ',
@@ -30,8 +30,6 @@
   if (window.top !== window.self || location.origin !== 'https://docs.google.com' ||
       !route || !ids.includes(route[1]) || document.getElementById('lp-scanner')) return;
 
-  const blankURL = `${location.origin}/forms/d/e/${route[1]}/viewform`;
-  const markerKey = `lp-scanner-pending:${route[1]}`;
   const stations = ['Console Station 1', 'Console Station 2', 'Console Station 3', 'PC Station'];
   const actions = [
     'Check in to Lounge and Borrow Equipment',
@@ -39,23 +37,17 @@
     'Check in to Lounge as additional person in a group',
     'Check in to Lounge as a "watcher"',
   ];
+  // Match each equipment barcode to its station. 0, 1, and 2 mean Console 1, 2, and 3.
   const equipmentStations = Object.fromEntries([
     ['1088', 0], ['1089', 0], ['1090', 0],
     ['1082', 1], ['1083', 1], ['1084', 1],
     ['1085', 2], ['1086', 2], ['1087', 2],
   ].map(([barcode, index]) => [barcode, stations[index]]));
+  // Ignore extra spaces and the required-field * when matching question names.
   const normalize = text => text.replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim();
   let form, fields, submitButton, busy = false, started = 0;
 
-  // Only a timestamp is stored. Student IDs and equipment never enter script storage.
-  function pending(value) {
-    try {
-      if (value === null) sessionStorage.removeItem(markerKey);
-      else if (value !== undefined) sessionStorage.setItem(markerKey, String(value));
-      return Number(sessionStorage.getItem(markerKey)) || 0;
-    } catch { return 0; }
-  }
-
+  // Find "Submit another response" for the same form.
   function confirmationLink() {
     return [...document.querySelectorAll('a[href]')].find(link => {
       const url = new URL(link.href, location.href);
@@ -64,19 +56,17 @@
         (url.searchParams.get('usp') === 'form_confirm' || /submit another response/i.test(link.textContent));
     });
   }
+  // Wait for the recorded-response page before opening another form.
   function resetAfterConfirmation() {
     if (document.querySelector('form#mG61Hd') || !document.querySelector('.vHW8K')) return false;
     const link = confirmationLink();
-    const timestamp = pending();
-    if (!link && !(timestamp > 0 && Date.now() - timestamp < 600000)) return false;
-    pending(null);
-    // Follow Google's actual link, including its account path and form_confirm query.
-    if (link) link.click();
-    else location.replace(blankURL);
+    if (!link) return false;
+    link.click();
     return true;
   }
   if (resetAfterConfirmation()) return;
 
+  // Build the little scanner window. Keep its styles separate from the form.
   const host = document.createElement('aside');
   host.id = 'lp-scanner';
   document.body.append(host);
@@ -94,14 +84,13 @@
     @media(prefers-reduced-transparency:reduce){section{background:#fafafc;backdrop-filter:none}}
     @media(prefers-contrast:more){section,input{border-color:#515158;background:#fff}}
   `;
-  // DOM construction avoids HTML injection sinks and Google Forms' Trusted Types CSP.
+  // Build elements directly because Google blocks inserting raw HTML here.
   function element(tag, attributes = {}, ...children) {
     const node = document.createElement(tag);
     for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
     node.append(...children);
     return node;
   }
-  const button = (id, text, attributes = {}) => element('button', { id, type: 'button', ...attributes }, text);
   ui.append(style, element('section', { 'aria-label': 'Launch Point Scanner' },
     element('h2', { title: 'Drag to move' }, 'Launch Point Scanner'),
     element('label', { for: 'scan' }, 'Scan'),
@@ -110,11 +99,12 @@
     element('p', { id: 'status', role: 'status', 'aria-live': 'polite', hidden: '' }),
     element('details', {}, element('summary', {}, 'Help'),
       element('p', {}, 'Scan a barcode or move the window around.'),
-      element('p', {}, 'A,W to Check in/out. D to Submit Form. Esc to Clear Field'),
-      button('retry', 'Unlock after checking submission', { hidden: '' }))));
+      element('p', {}, 'A,D to Check in/out. S to Submit Form. Esc to Clear Field'),
+      element('button', { id: 'retry', type: 'button', hidden: '' }, 'Unlock after checking submission'))));
   const $ = selector => ui.querySelector(selector);
   const scan = $('#scan');
   const title = $('h2');
+  // Drag from the title and keep the window on screen. No saved position.
   let drag = null;
   function moveWindow(left, top) {
     const bounds = host.getBoundingClientRect();
@@ -127,15 +117,11 @@
     event.preventDefault();
     const bounds = host.getBoundingClientRect();
     drag = { id: event.pointerId, x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+    // Keep dragging even if the pointer moves outside the title.
     title.setPointerCapture(event.pointerId);
   });
   title.addEventListener('pointermove', event => {
     if (drag?.id === event.pointerId) moveWindow(event.clientX - drag.x, event.clientY - drag.y);
-  });
-  title.addEventListener('pointerup', event => {
-    if (drag?.id !== event.pointerId) return;
-    title.releasePointerCapture(event.pointerId);
-    drag = null;
   });
   title.addEventListener('lostpointercapture', () => { drag = null; });
   window.addEventListener('resize', () => {
@@ -143,26 +129,30 @@
     const bounds = host.getBoundingClientRect();
     moveWindow(bounds.left, bounds.top);
   });
+  // Show text under Scan. An empty string clears it. Nothing gets sent anywhere.
   function setStatus(text = '') {
     const status = $('#status');
     if (status.textContent === text && status.hidden === !text) return;
     status.textContent = text;
     status.hidden = !text;
   }
-  function clearStatus() { setStatus(); }
   function setBusy(value) { busy = value; scan.disabled = value; }
   function focusScanner() { if (!busy) scan.focus({ preventScroll: true }); }
+  // Find a question by name since the field IDs differ between the two forms.
   function question(title) {
     return [...form.querySelectorAll('[role="listitem"]')].find(item =>
       normalize(item.querySelector('[role="heading"]')?.textContent || '') === title);
   }
+  // Find a multiple-choice option, like Check in or PC Station. This does not click it.
   function radio(group, value) {
     return [...group.querySelectorAll('[role="radio"]')].find(el => el.getAttribute('data-value') === value || el.getAttribute('aria-label') === value);
   }
+  // Read which option is currently selected.
   function selected(group) {
     const el = group.querySelector('[role="radio"][aria-checked="true"]');
     return el?.getAttribute('data-value') || el?.getAttribute('aria-label') || '';
   }
+  // Click the option, then wait for Google to register it.
   async function choose(group, value) {
     const el = radio(group, value);
     if (!el || el.getAttribute('aria-disabled') === 'true') throw new Error('Google Forms is not ready for this selection.');
@@ -172,12 +162,14 @@
     if (selected(group) !== value) throw new Error('Google Forms did not accept the selection. Try again after it finishes loading.');
     group.scrollIntoView({ block: 'center', behavior: 'instant' });
   }
+  // Fill the box and tell Google the value changed, like typing it in.
   function setValue(input, value) {
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, value);
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
   }
   const values = inputs => inputs.map(input => input.value.trim()).filter(Boolean);
+  // Get the stations for known equipment. Unknown barcodes do not pick a station.
   function detected() { return [...new Set(values(fields.equipment).map(code => equipmentStations[code]).filter(Boolean))]; }
   function conflict() {
     const found = detected();
@@ -185,6 +177,7 @@
     if (found.length && selected(fields.station) !== found[0]) return `Equipment requires ${found[0]}. Select it or remove the equipment.`;
     return '';
   }
+  // Put the scan in the next empty ID or equipment box, then scroll to it.
   function finishScan() {
     if (!fields || busy) return;
     const value = scan.value.trim();
@@ -204,6 +197,7 @@
       focusScanner();
     });
   }
+  // Check before submitting with S since someone could have edited the form manually.
   async function validate() {
     if (!fields) throw new Error('Wait for Google Forms to finish loading.');
     if (scan.value.trim()) throw new Error('Press Enter to finish the current scan before submitting.');
@@ -212,40 +206,31 @@
     if (students.some(value => !/^\d{15}$/.test(value))) throw new Error('Every student ID must have exactly 15 digits.');
     if (equipment.some(value => !/^\d{4}$/.test(value))) throw new Error('Every equipment barcode must have exactly 4 digits.');
     if (new Set(students).size !== students.length || new Set(equipment).size !== equipment.length) throw new Error('Remove duplicate barcodes before submitting.');
-    if (!actions.includes(selected(fields.action))) throw new Error('Choose an action first (A or W).');
+    if (!actions.includes(selected(fields.action))) throw new Error('Choose an action first (A or D).');
+    // No station selected? Use PC.
     if (!selected(fields.station)) {
       await choose(fields.station, 'PC Station');
     }
     const stationError = conflict();
     if (stationError) throw new Error(stationError);
-    // Keep the required first ID populated after manual edits in the original form.
+    // Close any gaps so the required first ID box is filled.
     fields.students.forEach((input, i) => setValue(input, students[i] || ''));
     fields.equipment.forEach((input, i) => setValue(input, equipment[i] || ''));
     if (!form.checkValidity()) throw new Error('Complete the required fields in the original Google Form.');
   }
   const stop = event => { event.preventDefault(); event.stopImmediatePropagation(); };
-  let allowSubmitClick = false;
-  document.addEventListener('click', event => {
-    if (!fields || !submitButton || !event.composedPath().includes(submitButton) || allowSubmitClick) return;
-    stop(event); submit();
-  }, true);
-  document.addEventListener('submit', event => {
-    if (!fields || event.target !== form || busy) return;
-    stop(event); submit();
-  }, true);
+  // S runs our checks. Clicking Google's Submit button goes straight to Google.
   function submit() {
     if (!fields) { setStatus('Wait for Google Forms to finish loading.'); return; }
     safely(async () => {
       await validate();
-      setBusy(true); started = Date.now(); pending(started);
-      clearStatus();
-      allowSubmitClick = true;
-      try { submitButton.click(); } finally { allowSubmitClick = false; }
+      setBusy(true); started = Date.now();
+      setStatus();
+      submitButton.click();
     });
   }
-  async function selectAction(value) { await choose(fields.action, value); clearStatus(); focusScanner(); }
-  // Google lazily loads radio controllers. Serialize scans and shortcuts so D waits
-  // for an earlier station/action click to finish, even on the first interaction.
+  async function selectAction(value) { await choose(fields.action, value); setStatus(); focusScanner(); }
+  // Do one thing at a time so S waits for the last scan or selection to finish.
   let operations = Promise.resolve();
   function safely(fn) {
     operations = operations.then(async () => {
@@ -253,8 +238,9 @@
       try { await fn(); } catch (error) { setStatus(error.message); focusScanner(); }
     });
   }
+  // Unlock only when asked. Retrying automatically could submit the same entry twice.
   $('#retry').onclick = () => {
-    setBusy(false); pending(null); $('#retry').hidden = true;
+    setBusy(false); $('#retry').hidden = true;
     setStatus('Unlocked. Check the original form and response log before submitting again.'); focusScanner();
   };
   document.addEventListener('keydown', event => {
@@ -267,17 +253,19 @@
       return;
     }
     if (event.key === 'Escape' && target === scan) { stop(event); scan.value = ''; focusScanner(); return; }
+    // Leave typing alone in the form or when a scan is still being entered.
     const editing = target instanceof Element && target.matches('input,textarea,select,[contenteditable]:not([contenteditable="false"])');
     if (editing && (target !== scan || scan.value.length)) return;
     const key = event.key.toLowerCase();
-    if (!['a', 'w', 'd', 'p'].includes(key) || event.repeat) return;
+    if (!['a', 'd', 's', 'p'].includes(key) || event.repeat) return;
     stop(event);
     if (key === 'a') safely(() => selectAction(actions[0]));
-    if (key === 'w') safely(() => selectAction(actions[1]));
-    if (key === 'd') submit();
+    if (key === 'd') safely(() => selectAction(actions[1]));
+    if (key === 's') submit();
     if (key === 'p') safely(async () => { await choose(fields.station, 'PC Station'); setStatus(conflict()); focusScanner(); });
   }, true);
 
+  // Wait for Google to load the fields. After that, watch for confirmation or errors.
   const bootTime = Date.now();
   const timer = setInterval(() => {
     if (resetAfterConfirmation()) { clearInterval(timer); return; }
@@ -297,10 +285,10 @@
         return;
       }
       fields = { students, equipment, action, station };
-      clearStatus(); focusScanner();
+      setStatus(); focusScanner();
     }
     if (busy && form.isConnected && form.querySelector('[aria-invalid="true"]')) {
-      setBusy(false); pending(null); setStatus('Google Forms rejected a field. Review the original form; your entries are retained.');
+      setBusy(false); setStatus('Google Forms rejected a field. Review the original form; your entries are retained.');
     }
     if (busy && Date.now() - started > 20000) {
       setStatus('No confirmation yet. Check the response log before unlocking in Help.');

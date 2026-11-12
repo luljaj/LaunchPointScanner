@@ -49,7 +49,7 @@ const submissions = ctx => ctx.page.evaluate(() => window.nativeSubmissions);
 const studentInput = ctx => ctx.page.locator('form input[type="text"]').first();
 
 const checked = (ctx, prefix) => ctx.page.locator(`[role="radio"][aria-checked="true"][data-value^="${prefix}"]`).getAttribute('data-value');
-async function submitAndWait(ctx) { await ctx.scan.press('d'); await ctx.page.waitForFunction(() => window.nativeSubmissions === 1); }
+async function submitAndWait(ctx) { await ctx.scan.press('s'); await ctx.page.waitForFunction(() => window.nativeSubmissions === 1); }
 
 test('compact interface contains only heading, Scan and Help at rest', async () => {
   const ctx = await setup();
@@ -96,20 +96,20 @@ test('unselected station defaults to PC with or without unknown equipment', asyn
     await scanCode(ctx, '000000000000001'); await ctx.scan.press('a');
     if (equipment) await scanCode(ctx, equipment);
     await submitAndWait(ctx); assert.equal(await checked(ctx, 'PC'), 'PC Station');
-    await ctx.page.locator('[jsname="M2UYVd"]').click(); assert.equal(await submissions(ctx), 1);
+    await ctx.page.keyboard.press('s'); assert.equal(await submissions(ctx), 1);
     assert.equal(await studentInput(ctx).inputValue(), '000000000000001'); await ctx.page.close();
   }
 });
 
 test('explicit stations are retained and mapped equipment conflicts block submission', async () => {
   const ctx = await setup();
-  await scanCode(ctx, '000000000000001'); await ctx.scan.press('w');
+  await scanCode(ctx, '000000000000001'); await ctx.scan.press('d');
   await ctx.page.locator('[data-value="Console Station 3"]').click();
   await submitAndWait(ctx); assert.equal(await checked(ctx, 'Console'), stations[2]); await ctx.page.close();
   const conflict = await setup();
   await scanCode(conflict, '000000000000001'); await conflict.scan.press('a');
   await scanCode(conflict, '1083'); await scanCode(conflict, '1088');
-  await conflict.scan.press('d'); assert.match(await conflict.status.innerText(), /conflicting stations/);
+  await conflict.scan.press('s'); assert.match(await conflict.status.innerText(), /conflicting stations/);
   assert.equal(await submissions(conflict), 0);
   await conflict.page.locator('form input[type="text"]').nth(5).fill('');
   await submitAndWait(conflict); assert.equal(await checked(conflict, 'Console'), stations[1]); await conflict.page.close();
@@ -117,10 +117,11 @@ test('explicit stations are retained and mapped equipment conflicts block submis
 
 test('shortcuts do not interrupt text editing; incomplete scans block submission', async () => {
   const ctx = await setup();
-  await ctx.scan.press('d'); assert.match(await ctx.status.innerText(), /at least one/);
-  await scanCode(ctx, '000000000000001'); await ctx.scan.press('d'); assert.match(await ctx.status.innerText(), /Choose an action/);
-  await ctx.scan.press('a'); await ctx.scan.fill('123'); await ctx.scan.press('w'); assert.equal(await ctx.scan.inputValue(), '123w');
-  await ctx.page.locator('[jsname="M2UYVd"]').click(); assert.match(await ctx.status.innerText(), /finish the current scan/);
+  await ctx.scan.press('s'); assert.match(await ctx.status.innerText(), /at least one/);
+  await scanCode(ctx, '000000000000001'); await ctx.scan.press('s'); assert.match(await ctx.status.innerText(), /Choose an action/);
+  await ctx.scan.press('a'); await ctx.scan.fill('123'); await ctx.scan.press('d'); assert.equal(await ctx.scan.inputValue(), '123d');
+  await ctx.page.locator('[jsname="M2UYVd"]').focus();
+  await ctx.page.keyboard.press('s'); assert.match(await ctx.status.innerText(), /finish the current scan/);
   await ctx.scan.press('Escape'); assert.equal(await ctx.scan.inputValue(), '');
   await submitAndWait(ctx); await ctx.page.close();
 });
@@ -220,5 +221,51 @@ test('repeated errors do not rewrite status, and a valid scan clears the error',
   await ctx.panel.locator('#retry').click();
   assert.equal(await ctx.scan.isDisabled(), false);
   assert.equal(await studentInput(ctx).inputValue(), '000000000000001');
+  await ctx.page.close();
+});
+
+test('confirmation without another-response link stays on the page without storing data', async () => {
+  const ctx = await setup(ids[0], 'formResponse', '<div class="vHW8K">Your response has been recorded.</div>');
+  await ctx.page.waitForTimeout(500);
+  assert.ok(ctx.page.url().endsWith('/formResponse'));
+  assert.equal(await ctx.page.evaluate(() => sessionStorage.length), 0);
+  await ctx.page.close();
+});
+
+
+test('original Submit button and native form submit bypass scanner checks', async () => {
+  const ctx = await setup();
+  // These values fail scanner validation, but the original button must stay usable.
+  const inputs = ctx.page.locator('form input[type="text"]');
+  await inputs.nth(0).fill('manual-id');
+  await inputs.nth(1).fill('manual-id');
+  await inputs.nth(4).fill('1083');
+  await inputs.nth(5).fill('1088');
+  await ctx.scan.fill('unfinished');
+  await ctx.page.locator('[jsname="M2UYVd"]').click();
+  assert.equal(await submissions(ctx), 1);
+  assert.equal(await ctx.status.isVisible(), false);
+  assert.equal(await ctx.page.locator('[role="radio"][aria-checked="true"]').count(), 0);
+  assert.equal(await ctx.scan.inputValue(), 'unfinished');
+  assert.equal(await ctx.scan.isDisabled(), false);
+  assert.equal(await inputs.nth(0).inputValue(), 'manual-id');
+  await ctx.page.getByRole('button', { name: 'Native submit', exact: true }).click();
+  assert.equal(await submissions(ctx), 2);
+  await ctx.page.close();
+});
+
+
+test('A checks in, D checks out without submitting, and S submits', async () => {
+  const ctx = await setup();
+  await scanCode(ctx, '000000000000001');
+  await ctx.scan.press('a');
+  assert.equal(await checked(ctx, 'Check'), actions[0]);
+  await ctx.scan.press('d');
+  assert.equal(await checked(ctx, 'Check'), actions[1]);
+  assert.equal(await submissions(ctx), 0);
+  await ctx.scan.press('a');
+  assert.equal(await checked(ctx, 'Check'), actions[0]);
+  await submitAndWait(ctx);
+  assert.equal(await submissions(ctx), 1);
   await ctx.page.close();
 });
