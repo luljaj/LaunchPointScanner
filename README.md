@@ -18,7 +18,7 @@ Your scanner should send Enter after each barcode. When typing instead, press En
 
 Known equipment selects its station: 1088–1090 → Console 1, 1082–1084 → Console 2, 1085–1087 → Console 3. Other four-digit equipment barcodes are accepted. **If no station is selected when pressing S, PC Station is selected automatically**, including when unknown equipment is present. An existing station selection is kept. Conflicting mapped equipment, duplicate codes, and invalid lengths block submission through S. Clicking the original Google Forms Submit button bypasses the scanner's checks and PC default; Google Forms still applies its own validation.
 
-After Google confirms the response, the script automatically clicks **Submit another response**. The next blank form shows the scanner again and focuses Scan. Account-specific paths such as `/forms/u/0/d/e/.../viewform?usp=form_confirm` are supported. If Google does not provide that link, the script stays on the confirmation page.
+After Google confirms the response, the script automatically clicks **Submit another response**, skipping **Edit your response** links. The next blank form shows the scanner again and focuses Scan. Account-specific paths such as `/forms/u/0/d/e/.../viewform?usp=form_confirm` are supported. If Google does not provide that link, the script stays on the confirmation page.
 
 If confirmation is delayed, entries stay in the form. Check the response log before using the recovery unlock inside Help, as retrying an already recorded response could create a duplicate.
 

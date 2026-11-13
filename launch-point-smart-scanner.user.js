@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Launch Point Smart Scanner
 // @namespace    rescons
-// @version      1.1.10
+// @version      1.1.11
 // @description  Scanner-first entry for the Launch Point Google Form.
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform?*
@@ -47,12 +47,13 @@
   const normalize = text => text.replace(/\s+/g, ' ').replace(/\s*\*\s*$/, '').trim();
   let form, fields, submitButton, busy = false, started = 0;
 
-  // Find "Submit another response" for the same form.
+  // Find "Submit another response" for the same form. Skip edit links, even with form_confirm.
   function confirmationLink() {
     return [...document.querySelectorAll('a[href]')].find(link => {
       const url = new URL(link.href, location.href);
       const match = url.pathname.match(/^\/forms\/(?:u\/\d+\/)?d\/e\/([^/]+)\/viewform$/);
       return url.origin === location.origin && match?.[1] === route[1] &&
+        !url.searchParams.has('edit2') && !url.searchParams.has('edit') &&
         (url.searchParams.get('usp') === 'form_confirm' || /submit another response/i.test(link.textContent));
     });
   }

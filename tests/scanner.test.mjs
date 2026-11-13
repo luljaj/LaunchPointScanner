@@ -269,3 +269,26 @@ test('A checks in, D checks out without submitting, and S submits', async () => 
   assert.equal(await submissions(ctx), 1);
   await ctx.page.close();
 });
+
+test('confirmation skips edit links listed before Submit another response on both forms', async () => {
+  for (const id of ids) {
+    const nextURL = `https://docs.google.com/forms/u/0/d/e/${id}/viewform?usp=form_confirm`;
+    const html = `<div class="vHW8K">Your response has been recorded.</div>
+      <a href="${nextURL}&edit2=fake-test-token">Edit your response</a>
+      <a href="${nextURL}&edit=fake-test-token">Edit your response</a>
+      <a href="${nextURL}">Submit another response</a>`;
+    const ctx = await setup(id, 'formResponse', html);
+    await ctx.page.waitForURL(nextURL);
+    assert.equal(new URL(ctx.page.url()).searchParams.has('edit2'), false);
+    assert.equal(new URL(ctx.page.url()).searchParams.has('edit'), false);
+    await ctx.page.close();
+  }
+});
+
+test('confirmation with only an edit link stays on the confirmation page', async () => {
+  const editURL = `https://docs.google.com/forms/u/0/d/e/${ids[1]}/viewform?usp=form_confirm&edit2=fake-test-token`;
+  const ctx = await setup(ids[1], 'formResponse', `<div class="vHW8K">Your response has been recorded.</div><a href="${editURL}">Edit your response</a>`);
+  await ctx.page.waitForTimeout(500);
+  assert.ok(ctx.page.url().endsWith('/formResponse'));
+  await ctx.page.close();
+});
