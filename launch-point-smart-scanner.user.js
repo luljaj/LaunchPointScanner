@@ -1,16 +1,11 @@
 // ==UserScript==
 // @name         Launch Point Smart Scanner
 // @namespace    rescons
-// @version      1.1.13
+// @version      1.1.14
 // @description  Scanner-first entry for the Launch Point Google Form.
-// @match        https://docs.google.com/forms/d/e/TEST_FORM_ID/viewform
-// @match        https://docs.google.com/forms/d/e/TEST_FORM_ID/viewform?*
-// @match        https://docs.google.com/forms/d/e/TEST_FORM_ID/formResponse*
 // @match        https://docs.google.com/forms/d/e/ACTUAL_FORM_ID/viewform
 // @match        https://docs.google.com/forms/d/e/ACTUAL_FORM_ID/viewform?*
 // @match        https://docs.google.com/forms/d/e/ACTUAL_FORM_ID/formResponse*
-// @match        https://docs.google.com/forms/u/*/d/e/TEST_FORM_ID/viewform*
-// @match        https://docs.google.com/forms/u/*/d/e/TEST_FORM_ID/formResponse*
 // @match        https://docs.google.com/forms/u/*/d/e/ACTUAL_FORM_ID/viewform*
 // @match        https://docs.google.com/forms/u/*/d/e/ACTUAL_FORM_ID/formResponse*
 // @run-at       document-idle
@@ -21,14 +16,11 @@
 (() => {
   'use strict';
 
-  // Only run on these two forms. Check the URL here too since @match allows extra text.
-  const ids = [
-    'TEST_FORM_ID',
-    'ACTUAL_FORM_ID',
-  ];
+  // Only run on this form. Check the URL here too since @match allows extra text.
+  const formId = 'ACTUAL_FORM_ID';
   const route = location.pathname.match(/^\/forms\/(?:u\/\d+\/)?d\/e\/([^/]+)\/(viewform|formResponse)$/);
   if (window.top !== window.self || location.origin !== 'https://docs.google.com' ||
-      !route || !ids.includes(route[1]) || document.getElementById('lp-scanner')) return;
+      !route || route[1] !== formId || document.getElementById('lp-scanner')) return;
 
   const stations = ['Console Station 1', 'Console Station 2', 'Console Station 3', 'PC Station'];
   const actions = [
