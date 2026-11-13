@@ -10,6 +10,4 @@ After submitting, it clicks Submit another response and opens a fresh form.
 
 To use it, install Tampermonkey in Chrome or Edge, create a script, paste in [this file](launch-point-smart-scanner.user.js), save, and reload the form. No npm setup needed.
 
-Only runs on the Launch Point Google Form and a test one I have
-
-[Form](https://docs.google.com/forms/d/e/1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ/viewform).
+Only runs on the Launch Point Google Form.
