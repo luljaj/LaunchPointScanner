@@ -1,18 +1,18 @@
 // ==UserScript==
 // @name         Launch Point Smart Scanner
 // @namespace    rescons
-// @version      1.1.12
+// @version      1.1.13
 // @description  Scanner-first entry for the Launch Point Google Form.
-// @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform
-// @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform?*
-// @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/formResponse*
-// @match        https://docs.google.com/forms/d/e/1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ/viewform
-// @match        https://docs.google.com/forms/d/e/1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ/viewform?*
-// @match        https://docs.google.com/forms/d/e/1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ/formResponse*
-// @match        https://docs.google.com/forms/u/*/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform*
-// @match        https://docs.google.com/forms/u/*/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/formResponse*
-// @match        https://docs.google.com/forms/u/*/d/e/1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ/viewform*
-// @match        https://docs.google.com/forms/u/*/d/e/1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ/formResponse*
+// @match        https://docs.google.com/forms/d/e/TEST_FORM_ID/viewform
+// @match        https://docs.google.com/forms/d/e/TEST_FORM_ID/viewform?*
+// @match        https://docs.google.com/forms/d/e/TEST_FORM_ID/formResponse*
+// @match        https://docs.google.com/forms/d/e/ACTUAL_FORM_ID/viewform
+// @match        https://docs.google.com/forms/d/e/ACTUAL_FORM_ID/viewform?*
+// @match        https://docs.google.com/forms/d/e/ACTUAL_FORM_ID/formResponse*
+// @match        https://docs.google.com/forms/u/*/d/e/TEST_FORM_ID/viewform*
+// @match        https://docs.google.com/forms/u/*/d/e/TEST_FORM_ID/formResponse*
+// @match        https://docs.google.com/forms/u/*/d/e/ACTUAL_FORM_ID/viewform*
+// @match        https://docs.google.com/forms/u/*/d/e/ACTUAL_FORM_ID/formResponse*
 // @run-at       document-idle
 // @grant        none
 // @noframes
@@ -23,8 +23,8 @@
 
   // Only run on these two forms. Check the URL here too since @match allows extra text.
   const ids = [
-    '1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q',
-    '1FAIpQLSegFVvJorGm_Du-TgjGFPJJe_0xSw9Jva17NT6-cleoM4z3FQ',
+    'TEST_FORM_ID',
+    'ACTUAL_FORM_ID',
   ];
   const route = location.pathname.match(/^\/forms\/(?:u\/\d+\/)?d\/e\/([^/]+)\/(viewform|formResponse)$/);
   if (window.top !== window.self || location.origin !== 'https://docs.google.com' ||
