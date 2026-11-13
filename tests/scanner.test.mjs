@@ -292,3 +292,53 @@ test('confirmation with only an edit link stays on the confirmation page', async
   assert.ok(ctx.page.url().endsWith('/formResponse'));
   await ctx.page.close();
 });
+
+test('Tab suffix adds student IDs and equipment without submitting or losing focus', async () => {
+  const ctx = await setup();
+  const inputs = ctx.page.locator('form input[type="text"]');
+  for (const [code, index] of [['00000000001', 0], ['1083', 4], ['1082', 5]]) {
+    await ctx.scan.fill(code);
+    await ctx.scan.press('Tab');
+    assert.equal(await inputs.nth(index).inputValue(), code);
+    assert.equal(await ctx.scan.inputValue(), '');
+    assert.equal(await ctx.scan.evaluate(el => el === el.getRootNode().activeElement), true);
+  }
+  assert.equal(await checked(ctx, 'Console'), stations[1]);
+  await ctx.scan.fill('1083'); await ctx.scan.press('Tab');
+  assert.match(await ctx.status.innerText(), /already entered/);
+  await ctx.scan.fill('bad'); await ctx.scan.press('Tab');
+  assert.equal(await ctx.status.innerText(), 'Invalid barcode');
+  assert.equal(await submissions(ctx), 0);
+  assert.equal(await ctx.scan.evaluate(el => el === el.getRootNode().activeElement), true);
+  await ctx.page.close();
+});
+
+test('empty Tab, Shift+Tab and Tab in the original form keep normal navigation', async () => {
+  const ctx = await setup();
+  await ctx.scan.press('Tab');
+  assert.equal(await ctx.panel.locator('summary').evaluate(el => el === el.getRootNode().activeElement), true);
+  await ctx.scan.fill('1083'); await ctx.scan.press('Shift+Tab');
+  assert.equal(await ctx.scan.inputValue(), '1083');
+  assert.equal(await ctx.scan.evaluate(el => el === el.getRootNode().activeElement), false);
+  assert.equal(await ctx.page.locator('form input[type="text"]').nth(4).inputValue(), '');
+  await studentInput(ctx).fill('00000000001');
+  await studentInput(ctx).press('Tab');
+  assert.equal(await ctx.page.locator('form input[type="text"]').nth(1).evaluate(el => el === document.activeElement), true);
+  assert.equal(await submissions(ctx), 0);
+  await ctx.page.close();
+});
+
+test('student Enter and equipment Tab suffixes work together for consecutive scans', async () => {
+  const ctx = await setup();
+  await scanCode(ctx, '00000000001');
+  await ctx.scan.fill('1083'); await ctx.scan.press('Tab');
+  await scanCode(ctx, '00000000002');
+  const inputs = ctx.page.locator('form input[type="text"]');
+  assert.equal(await inputs.nth(0).inputValue(), '00000000001');
+  assert.equal(await inputs.nth(1).inputValue(), '00000000002');
+  assert.equal(await inputs.nth(4).inputValue(), '1083');
+  assert.equal(await checked(ctx, 'Console'), stations[1]);
+  assert.equal(await submissions(ctx), 0);
+  assert.equal(await ctx.scan.evaluate(el => el === el.getRootNode().activeElement), true);
+  await ctx.page.close();
+});

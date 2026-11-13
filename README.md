@@ -6,15 +6,15 @@ The small corner interface contains **Launch Point Scanner**, a **Scan** textbox
 
 | Input | Result |
 | --- | --- |
-| 11 digits + Enter | Next student ID, maximum four |
-| 4 digits + Enter | Next equipment barcode, maximum four |
+| 11 digits + Enter/Tab | Next student ID, maximum four |
+| 4 digits + Enter/Tab | Next equipment barcode, maximum four |
 | A | Check in and borrow equipment |
 | D | Check out and return equipment |
 | S | Validate and submit the Google Form |
 | P | Select PC Station |
 | Esc | Clear unfinished scan |
 
-Your scanner should send Enter after each barcode. When typing instead, press Enter to add the barcode. Use shortcuts with an empty Scan box; shortcuts do not interrupt editing other text fields.
+Scanners can send Enter or Tab after each barcode. Both add the barcode and keep Scan focused. When typing instead, press Enter or Tab to add it. With an empty Scan box, Tab navigates normally; Shift+Tab always navigates backward. Use shortcuts with an empty Scan box; shortcuts do not interrupt editing other text fields.
 
 Known equipment selects its station: 1088–1090 → Console 1, 1082–1084 → Console 2, 1085–1087 → Console 3. Other four-digit equipment barcodes are accepted. **If no station is selected when pressing S, PC Station is selected automatically**, including when unknown equipment is present. An existing station selection is kept. Conflicting mapped equipment, duplicate codes, and invalid lengths block submission through S. Clicking the original Google Forms Submit button bypasses the scanner's checks and PC default; Google Forms still applies its own validation.
 

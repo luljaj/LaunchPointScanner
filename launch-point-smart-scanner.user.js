@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Launch Point Smart Scanner
 // @namespace    rescons
-// @version      1.1.11
+// @version      1.1.12
 // @description  Scanner-first entry for the Launch Point Google Form.
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform
 // @match        https://docs.google.com/forms/d/e/1FAIpQLSd94LsYIN9i-eKTIYvKjdgk4O03nX7XCJ6Q7W95Vz5AGBFT1Q/viewform?*
@@ -99,7 +99,7 @@
       spellcheck: 'false', 'aria-describedby': 'status' }),
     element('p', { id: 'status', role: 'status', 'aria-live': 'polite', hidden: '' }),
     element('details', {}, element('summary', {}, 'Help'),
-      element('p', {}, 'Scan a barcode or move the window around.'),
+      element('p', {}, 'Scan a barcode. Enter or Tab adds it. Drag the title to move the window.'),
       element('p', {}, 'A,D to Check in/out. S to Submit Form. Esc to Clear Field'),
       element('button', { id: 'retry', type: 'button', hidden: '' }, 'Unlock after checking submission'))));
   const $ = selector => ui.querySelector(selector);
@@ -201,7 +201,7 @@
   // Check before submitting with S since someone could have edited the form manually.
   async function validate() {
     if (!fields) throw new Error('Wait for Google Forms to finish loading.');
-    if (scan.value.trim()) throw new Error('Press Enter to finish the current scan before submitting.');
+    if (scan.value.trim()) throw new Error('Press Enter or Tab to finish the current scan before submitting.');
     const students = values(fields.students), equipment = values(fields.equipment);
     if (!students.length) throw new Error('Scan at least one student ID.');
     if (students.some(value => !/^\d{11}$/.test(value))) throw new Error('Every student ID must have exactly 11 digits.');
@@ -247,6 +247,12 @@
   document.addEventListener('keydown', event => {
     if (event.isComposing || event.ctrlKey || event.altKey || event.metaKey) return;
     const target = event.composedPath()[0];
+    // Some scanners send Tab instead of Enter. Keep the next scan in this box.
+    if (event.key === 'Tab' && !event.shiftKey && target === scan && scan.value.trim()) {
+      stop(event);
+      if (!event.repeat) finishScan();
+      return;
+    }
     if (event.key === 'Enter') {
       if (ui.contains(target) && target !== scan) return;
       stop(event); // Never let a scanner suffix submit the form or activate a focused button.
